@@ -1,0 +1,64 @@
+.team-status-container {
+  margin-top: 30px;
+}
+
+.team-status-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.team-status-table th, .team-status-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.status-badge-team {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: #fff;
+}
+.status-badge-team.status-em-atendimento { background-color: #007bff; }
+.status-badge-team.status-em-pausa { background-color: #17a2b8; }
+.status-badge-team.status-pausa-aprovada { background-color: #28a745; }
+
+.btn-force-pause {
+  background-color: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-force-pause:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+/* Estilos do Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+}
+.modal-content h4 { margin-top: 0; }
+.modal-content select { width: 100%; padding: 8px; margin: 10px 0; }
+.modal-actions { display: flex; justify-content: flex-end; margin-top: 20px; gap: 10px; }
+.modal-actions button { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; }
+.btn-cancel { background-color: #6c757d; color: white; }
+.btn-confirm { background-color: #dc3545; color: white; }

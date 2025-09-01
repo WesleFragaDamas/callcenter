@@ -1,0 +1,107 @@
+/* Container principal que ocupa a tela inteira */
+.dashboard-container {
+  display: grid; /* Ativa o modo CSS Grid */
+  
+  /* Define 3 colunas: 
+     - A primeira (sidebar-left) tem 200px de largura.
+     - A segunda (main-content) ocupa o espaço restante (1fr = 1 fração).
+     - A terceira (sidebar-right) tem 250px de largura.
+  */
+  grid-template-columns: 200px 1fr 250px;
+  
+  /* Define que o layout terá 1 linha que ocupa 100% da altura da tela */
+  grid-template-rows: 100vh; /* vh = viewport height */
+
+  /* Define os nomes das áreas do grid para facilitar a organização */
+  grid-template-areas: 
+    "sidebar-left main-content sidebar-right";
+  
+  gap: 10px; /* Adiciona um pequeno espaço entre as colunas */
+  background-color: #f4f7fa;
+}
+
+/* Associa cada classe à sua área nomeada no grid */
+.sidebar-left {
+  grid-area: sidebar-left;
+  background-color: #ffffff;
+  padding: 20px;
+  border-right: 1px solid #e0e0e0;
+}
+
+.main-content {
+  grid-area: main-content;
+  background-color: #ffffff;
+  padding: 20px;
+}
+
+.sidebar-right {
+  grid-area: sidebar-right;
+  background-color: #ffffff;
+  padding: 20px;
+  border-left: 1px solid #e0e0e0;
+}
+
+/* Estilos básicos para os elementos dentro das colunas */
+.sidebar-left ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.sidebar-left li {
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.sidebar-left li:hover {
+  background-color: #f0f0f0;
+}
+
+/* Estilo para a sidebar quando ela estiver escondida */
+.sidebar-left.hidden,
+.sidebar-right.hidden {
+  display: none; /* A maneira mais simples de esconder um elemento */
+}
+
+/* Quando a sidebar esquerda estiver escondida, ajustamos o grid */
+.dashboard-container.left-sidebar-hidden {
+  /* O layout agora terá 2 colunas: a principal e a sidebar direita */
+  grid-template-columns: 1fr 250px;
+  grid-template-areas: "main-content sidebar-right";
+}
+
+/* Quando a sidebar direita estiver escondida */
+.dashboard-container.right-sidebar-hidden {
+  /* O layout agora terá 2 colunas: a sidebar esquerda e a principal */
+  grid-template-columns: 200px 1fr;
+  grid-template-areas: "sidebar-left main-content";
+}
+
+/* Quando AMBAS estiverem escondidas */
+.dashboard-container.left-sidebar-hidden.right-sidebar-hidden {
+  /* O layout agora terá APENAS 1 coluna: a principal */
+  grid-template-columns: 1fr;
+  grid-template-areas: "main-content";
+}
+
+/* Pequenos ajustes no cabeçalho do conteúdo principal para os botões */
+.main-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.main-content-header h1 {
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.main-content-header button {
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+}

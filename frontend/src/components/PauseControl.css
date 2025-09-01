@@ -1,0 +1,65 @@
+.pause-control-container {
+  text-align: center;
+}
+
+.pause-control-container button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: none;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.request-button {
+  background-color: #007bff; /* Azul */
+}
+.request-button:hover {
+  background-color: #0056b3;
+}
+
+.cancel-button {
+  background-color: #ffc107; /* Amarelo */
+  color: #333;
+}
+.cancel-button:hover {
+  background-color: #e0a800;
+}
+
+.end-button {
+  background-color: #28a745; /* Verde */
+}
+.end-button:hover {
+  background-color: #1e7e34;
+}
+
+.pause-select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+/* Estilos para o status de pausa aprovada */
+.status-approved {
+  color: #28a745; /* verde */
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.start-button {
+  background-color: #17a2b8; /* azul ciano */
+}
+.start-button:hover {
+  background-color: #138496;
+}
+
+.timer {
+  font-size: 2em; /* 2 vezes o tamanho da fonte normal */
+  font-weight: bold;
+  color: #333;
+  margin: 10px 0;
+}

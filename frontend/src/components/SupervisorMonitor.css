@@ -1,0 +1,61 @@
+.supervisor-monitor {
+  width: 100%;
+}
+
+.monitor-table {
+  width: 100%;
+  border-collapse: collapse; /* Remove o espaço entre as células */
+  margin-top: 20px;
+  font-size: 0.9em;
+}
+
+.monitor-table th,
+.monitor-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.monitor-table thead th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+/* Colore as linhas pares para melhor legibilidade */
+.monitor-table tbody tr:nth-of-type(even) {
+  background-color: #f9f9f9;
+}
+
+/* --- Sinalização por Status --- */
+
+/* Badge (etiqueta) de status */
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-weight: 500;
+  font-size: 0.8em;
+}
+
+.status-in_progress {
+  background-color: #17a2b8; /* azul ciano */
+}
+
+.status-approved-monitor {
+  font-size: 1.2em;
+  color: #28a745; /* verde */
+  font-weight: 500;
+}
+
+/* O tempo restante em si */
+.timer-monitor {
+  font-size: 1.1em;
+  font-weight: bold;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.no-data-message {
+  text-align: center;
+  margin-top: 20px;
+  color: #888;
+}
