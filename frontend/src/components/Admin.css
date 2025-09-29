@@ -30,3 +30,24 @@
 .admin-table th { background-color: #f8f9fa; }
 .admin-table td button { margin-right: 5px; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; }
 .btn-delete { background-color: #dc3545; color: white; }
+
+/* ... (estilos existentes) ... */
+
+.inactive-row {
+  background-color: #f8d7da; /* Fundo avermelhado claro */
+  color: #721c24; /* Texto escuro */
+  text-decoration: line-through; /* Tacha o texto */
+}
+
+.status-badge-team.status-active {
+  background-color: #28a745; /* Verde */
+}
+
+.status-badge-team.status-inactive {
+  background-color: #6c757d; /* Cinza */
+}
+
+.btn-reactivate {
+  background-color: #28a745; /* Verde */
+  color: white;
+}

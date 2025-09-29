@@ -2,98 +2,139 @@ import React, { useState, useEffect } from 'react';
 import { getToken } from '../auth';
 import './Admin.css';
 
+// -- COMPONENTE MODAL PARA EDIÇÃO/CRIAÇÃO --
+const UserModal = ({ user, roles, onSave, onCancel }) => {
+  const [userData, setUserData] = useState(user);
+  const isNewUser = !user.id;
+
+  useEffect(() => {
+    setUserData(user);
+  }, [user]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setUserData({ ...userData, [name]: value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(userData);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h4>{isNewUser ? 'Criar Novo Usuário' : 'Editar Usuário'}</h4>
+        <form onSubmit={handleSubmit}>
+          <input type="text" name="full_name" value={userData.full_name || ''} onChange={handleChange} placeholder="Nome Completo" required />
+          <input type="text" name="username" value={userData.username || ''} onChange={handleChange} placeholder="Nome de Usuário (login)" required />
+          {isNewUser && (
+            <input type="password" name="password" value={userData.password || ''} onChange={handleChange} placeholder="Senha" required />
+          )}
+          <select name="role_id" value={userData.role_id || ''} onChange={handleChange} required>
+            <option value="">Selecione uma função...</option>
+            {roles.map(role => (
+              <option key={role.id} value={role.id}>{role.name}</option>
+            ))}
+          </select>
+          <div className="modal-actions">
+            <button type="button" onClick={onCancel} className="btn-cancel">Cancelar</button>
+            <button type="submit" className="btn-confirm">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+
+// -- COMPONENTE PRINCIPAL DA PÁGINA --
 const UsersAdmin = () => {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [newUser, setNewUser] = useState({
-    username: '',
-    full_name: '',
-    password: '',
-    role_id: ''
-  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
 
-  // Função para buscar os dados iniciais
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      const token = getToken();
-      console.log("Tentando buscar dados com o token:", token); // LOG 1: Verifica o token
-
-      if (!token) {
-        setIsLoading(false);
-        alert("Token não encontrado. Por favor, faça login novamente.");
-        return;
-      }
-      
-      try {
-        const headers = { 'Authorization': `Bearer ${token}` };
-
-        const [usersRes, rolesRes] = await Promise.all([
-          fetch('http://localhost:5000/api/users', { headers }),
-          fetch('http://localhost:5000/api/roles', { headers })
-        ]);
-
-        // Verificação de erro para a busca de usuários
-        if (!usersRes.ok) {
-          const errorData = await usersRes.json();
-          throw new Error(`Erro ao buscar usuários: ${errorData.message}`);
-        }
-        
-        // Verificação de erro para a busca de roles
-        if (!rolesRes.ok) {
-          const errorData = await rolesRes.json();
-          throw new Error(`Erro ao buscar funções: ${errorData.message}`);
-        }
-
-        const usersData = await usersRes.json();
-        const rolesData = await rolesRes.json();
-
-        console.log("Dados recebidos:", { usersData, rolesData }); // LOG 2: Verifica os dados
-
-        setUsers(Array.isArray(usersData) ? usersData : []);
-        setRoles(Array.isArray(rolesData) ? rolesData : []);
-
-      } catch (err) {
-        console.error("Erro detalhado em fetchInitialData:", err); // LOG 3: Mostra o erro exato
-        alert(err.message); // Mostra o erro para o usuário
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchInitialData();
-  }, []);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewUser({ ...newUser, [name]: value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchUsersAndRoles = async () => {
+    setIsLoading(true);
     const token = getToken();
     try {
-      const response = await fetch('http://localhost:5000/api/users', {
-        method: 'POST',
+      const [usersRes, rolesRes] = await Promise.all([
+        fetch('http://localhost:5000/api/users', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('http://localhost:5000/api/roles', { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+      const usersData = await usersRes.json();
+      const rolesData = await rolesRes.json();
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
+    } catch (err) {
+      console.error("Erro ao buscar dados", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // CORREÇÃO APLICADA AQUI
+    fetchUsersAndRoles();
+  }, []);
+
+  const handleNewUser = () => {
+    setEditingUser({ username: '', full_name: '', password: '', role_id: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleEditUser = (user) => {
+    const role = roles.find(r => r.name === user.role);
+    setEditingUser({ ...user, role_id: role ? role.id : '' });
+    setIsModalOpen(true);
+  };
+  
+  const handleToggleActive = async (user) => {
+    const action = user.is_active ? 'desativar' : 'reativar';
+    if (window.confirm(`Tem certeza que deseja ${action} o usuário ${user.full_name}?`)) {
+      const token = getToken();
+      try {
+        const response = await fetch(`http://localhost:5000/api/users/toggle-active/${user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ is_active: !user.is_active })
+        });
+        if (!response.ok) throw new Error(`Falha ao ${action} o usuário.`);
+        fetchUsersAndRoles();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
+  const handleSaveUser = async (userData) => {
+    const token = getToken();
+    const isNewUser = !userData.id;
+    const url = isNewUser ? 'http://localhost:5000/api/users' : `http://localhost:5000/api/users/${userData.id}`;
+    const method = isNewUser ? 'POST' : 'PUT';
+
+    try {
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newUser)
+        body: JSON.stringify(userData)
       });
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || 'Falha ao criar usuário.');
-      }
+      if (!response.ok) throw new Error(data.message || 'Falha ao salvar usuário.');
       
-      setNewUser({ username: '', full_name: '', password: '', role_id: '' });
-      // Re-busca apenas os usuários, pois as roles não mudaram
-      fetch('http://localhost:5000/api/users', { headers: { 'Authorization': `Bearer ${token}` }})
-        .then(res => res.json())
-        .then(data => setUsers(data));
-      
-      alert('Usuário criado com sucesso!');
+      setIsModalOpen(false);
+      setEditingUser(null);
+      fetchUsersAndRoles();
+      alert(`Usuário ${isNewUser ? 'criado' : 'atualizado'} com sucesso!`);
     } catch (err) {
       alert(err.message);
     }
@@ -103,23 +144,17 @@ const UsersAdmin = () => {
 
   return (
     <div className="admin-page">
-      <h2>Gerenciar Usuários</h2>
+      {isModalOpen && (
+        <UserModal 
+          user={editingUser} 
+          roles={roles} 
+          onSave={handleSaveUser} 
+          onCancel={() => setIsModalOpen(false)} 
+        />
+      )}
 
-      <form onSubmit={handleSubmit} className="admin-form">
-        <h3>Criar Novo Usuário</h3>
-        <input type="text" name="full_name" value={newUser.full_name} onChange={handleInputChange} placeholder="Nome Completo" required />
-        <input type="text" name="username" value={newUser.username} onChange={handleInputChange} placeholder="Nome de Usuário (login)" required />
-        <input type="password" name="password" value={newUser.password} onChange={handleInputChange} placeholder="Senha" required />
-        <select name="role_id" value={newUser.role_id} onChange={handleInputChange} required>
-          <option value="">Selecione uma função...</option>
-          {roles.map(role => (
-            <option key={role.id} value={role.id}>{role.name}</option>
-          ))}
-        </select>
-        <div className="form-actions">
-          <button type="submit">Criar Usuário</button>
-        </div>
-      </form>
+      <h2>Gerenciar Usuários</h2>
+      <button onClick={handleNewUser} className="btn-new">Novo Usuário</button>
 
       <table className="admin-table">
         <thead>
@@ -127,18 +162,29 @@ const UsersAdmin = () => {
             <th>Nome Completo</th>
             <th>Usuário (Login)</th>
             <th>Função</th>
+            <th>Status</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           {users.map(user => (
-            <tr key={user.id}>
+            <tr key={user.id} className={!user.is_active ? 'inactive-row' : ''}>
               <td>{user.full_name}</td>
               <td>{user.username}</td>
               <td>{user.role}</td>
               <td>
-                <button>Editar</button>
-                <button className="btn-delete">Desativar</button>
+                <span className={`status-badge-team status-${user.is_active ? 'active' : 'inactive'}`}>
+                  {user.is_active ? 'Ativo' : 'Inativo'}
+                </span>
+              </td>
+              <td>
+                <button onClick={() => handleEditUser(user)}>Editar</button>
+                <button 
+                  onClick={() => handleToggleActive(user)} 
+                  className={user.is_active ? 'btn-delete' : 'btn-reactivate'}
+                >
+                  {user.is_active ? 'Desativar' : 'Reativar'}
+                </button>
               </td>
             </tr>
           ))}

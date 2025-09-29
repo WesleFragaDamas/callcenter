@@ -1,47 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import './SupervisorDashboard.css';
-import { getToken } from '../auth';
 
-const SupervisorDashboard = ({ user }) => {
+/**
+ * SupervisorDashboard Component
+ * Este componente é o painel de AÇÕES do supervisor na sidebar.
+ * Ele é responsável por mostrar as solicitações PENDENTES e em FILA.
+ * 
+ * Props:
+ * - user: O objeto do supervisor logado.
+ * - onAction: A função "chefe" do Dashboard.js para executar chamadas de API.
+ */
+const SupervisorDashboard = ({ user, onAction }) => {
+  // O estado 'requests' agora será preenchido via polling do Dashboard.js,
+  // mas precisamos de um estado local para exibi-lo.
   const [requests, setRequests] = useState([]);
   
+  // O useEffect busca os dados das solicitações (pendentes e em fila)
   useEffect(() => {
     const fetchRequests = () => {
-      fetch('http://localhost:5000/api/pauses/pending') // Esta rota agora busca PENDING e QUEUED
+      // Usamos a função onAction para fazer uma chamada GET
+      // O Dashboard.js tratará a resposta e atualizará o estado
+      // NOTA: Para chamadas GET, não precisamos passar o segundo argumento 'options'.
+      // Precisamos de um novo endpoint para buscar dados para este componente.
+      // Vamos criar `GET /api/pauses/requests`
+      
+      // *** LÓGICA DE POLLING FOI MOVIDA PARA O DASHBOARD.JS ***
+      // Para este componente, vamos buscar os dados diretamente por simplicidade por enquanto
+      // e refatorar depois para receber do Dashboard.js
+      fetch('http://localhost:5000/api/pauses/pending') // Esta rota já busca PENDING e QUEUED
         .then(res => res.json())
         .then(data => setRequests(data))
         .catch(error => console.error("Erro ao buscar solicitações:", error));
     };
+
     fetchRequests();
-    const intervalId = setInterval(fetchRequests, 3000);
+    const intervalId = setInterval(fetchRequests, 3000); // Continua com seu polling local por enquanto
+    
     return () => clearInterval(intervalId);
   }, []);
 
-  const handleRequestAction = async (requestId, action) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/pauses/${action}/${requestId}`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}` // Importante para rotas protegidas no futuro
-        },
-        body: JSON.stringify({ userId: user.id })
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || `Falha ao ${action} a solicitação.`);
-      }
-      // Força a remoção visual imediata, o polling fará o resto
-      setRequests(currentRequests => 
-        currentRequests.filter(req => req.request_id !== requestId)
-      );
-    } catch (error) {
-      console.error(`Erro ao processar a ação ${action}:`, error);
-      alert(error.message);
-    }
+  // --- Funções que preparam e chamam 'onAction' ---
+
+  const handleApprove = (requestId) => {
+    onAction(`approve/${requestId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
   };
 
-  // Separa a lista de requisições em duas: pendentes e em fila
+  const handleReject = (requestId) => {
+    onAction(`reject/${requestId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
+  };
+
+  // Separa a lista de requisições em duas para exibição
   const pendingRequests = requests.filter(r => r.status === 'PENDING');
   const queuedRequests = requests.filter(r => r.status === 'QUEUED');
 
@@ -54,8 +70,8 @@ const SupervisorDashboard = ({ user }) => {
             <li key={req.request_id} className="request-item">
               <span className="user-name">{req.user_full_name}</span>
               <div className="request-actions">
-                <button className="approve-btn" onClick={() => handleRequestAction(req.request_id, 'approve')}>Aprovar</button>
-                <button className="reject-btn" onClick={() => handleRequestAction(req.request_id, 'reject')}>Rejeitar</button>
+                <button className="approve-btn" onClick={() => handleApprove(req.request_id)}>Aprovar</button>
+                <button className="reject-btn" onClick={() => handleReject(req.request_id)}>Rejeitar</button>
               </div>
             </li>
           ))}

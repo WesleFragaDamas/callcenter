@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./config/database');
+const path = require('path'); // Importe o módulo 'path' do Node.js
+
 
 // Importando TODOS os nossos módulos de rotas
 const authRoutes = require('./modules/auth/auth.routes'); 
@@ -26,6 +28,7 @@ app.use('/api/pauses', pauseRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/roles', roleRoutes); // <-- LINHA FALTANTE
 
+
 // Função para testar a conexão com o banco de dados
 async function testDbConnection() {
   try {
@@ -36,6 +39,21 @@ async function testDbConnection() {
     process.exit(1);
   }
 }
+
+// === SERVIR ARQUIVOS ESTÁTICOS DO FRONTEND (PRODUÇÃO) ===
+// Diz ao Express para usar a pasta 'build' para servir arquivos estáticos
+app.use(express.static(path.join(__dirname, '..', 'build')));
+
+// === Rotas da API ===
+app.use('/api/auth', authRoutes);
+// ... (outras rotas da API)
+
+// === ROTA "CATCH-ALL" PARA O FRONTEND ===
+// Qualquer requisição GET que não corresponda a uma rota da API acima
+// será redirecionada para o arquivo principal do React (index.html).
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'build', 'index.html'));
+});
 
 // Função principal para iniciar o servidor
 const startServer = async () => {
