@@ -5,7 +5,8 @@ const db = require('./config/database');
 // Importando TODOS os nossos módulos de rotas
 const authRoutes = require('./modules/auth/auth.routes'); 
 const pauseRoutes = require('./modules/pauses/pauses.routes');
-const userRoutes = require('./modules/users/users.routes'); // <-- LINHA QUE FALTAVA
+const userRoutes = require('./modules/users/users.routes');
+const roleRoutes = require('./modules/roles/roles.routes'); // <-- LINHA FALTANTE
 
 const app = express();
 const PORT = 5000;
@@ -22,8 +23,8 @@ app.get('/', (req, res) => {
 // Registrando TODOS os nossos módulos de rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/pauses', pauseRoutes);
-app.use('/api/users', userRoutes); // <-- LINHA QUE FALTAVA
-
+app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes); // <-- LINHA FALTANTE
 
 // Função para testar a conexão com o banco de dados
 async function testDbConnection() {

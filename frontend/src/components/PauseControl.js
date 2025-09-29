@@ -1,252 +1,103 @@
 import React, { useState, useEffect } from 'react';
 import './PauseControl.css';
 
-const PauseControl = ({ user }) => {
+/**
+ * PauseControl Component
+ * Este componente é o painel de AÇÕES do operador na sidebar.
+ * Ele é "burro": recebe o estado atual da pausa (`activePause`) do Dashboard
+ * e apenas exibe os botões corretos. Quando um botão é clicado, ele não
+ * executa a lógica da API diretamente, mas sim chama a função `onAction`
+ * que recebeu do Dashboard, passando os parâmetros necessários.
+ */
+const PauseControl = ({ user, activePause, onAction }) => {
+  // Objeto de constantes para os textos de status
   const STATUS = {
     WORKING: 'Em atendimento',
     PENDING: 'Aguardando aprovação...',
     APPROVED: 'Pausa Aprovada!',
     ON_BREAK: 'Em pausa!',
+    QUEUED: 'Em Fila de Espera',
   };
-
-  const [currentStatus, setCurrentStatus] = useState(STATUS.WORKING);
+  
+  // Estado local apenas para os dados do formulário
   const [pauseTypes, setPauseTypes] = useState([]);
   const [selectedPauseType, setSelectedPauseType] = useState('');
-  const [pendingRequestId, setPendingRequestId] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
 
-  // --- EFEITO PRINCIPAL PARA SINCRONIZAÇÃO E POLLING ---
+  // Busca os tipos de pausa da API quando o componente carrega
   useEffect(() => {
-    // Busca os tipos de pausa (só na primeira vez)
-    const fetchPauseTypes = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/pauses/types');
-        const data = await response.json();
+    fetch('http://localhost:5000/api/pauses/types') // Esta rota é pública, não precisa de token
+      .then(res => res.json())
+      .then(data => {
         setPauseTypes(data);
+        // Pré-seleciona o primeiro tipo de pausa da lista
         if (data.length > 0) {
           setSelectedPauseType(data[0].id);
         }
-      } catch (error) {
-        console.error('Falha ao buscar os tipos de pausa:', error);
-      }
-    };
+      })
+      .catch(error => console.error('Falha ao buscar os tipos de pausa:', error));
+  }, []); // O array vazio [] garante que isso rode apenas uma vez
 
-    // Sincroniza o estado atual do operador com o backend
-    const syncState = async () => {
-      if (!user?.id) return;
-      try {
-        const response = await fetch(`http://localhost:5000/api/pauses/active-request/${user.id}`);
-        const activeRequest = await response.json();
+  // --- Funções que preparam os dados e chamam 'onAction' ---
 
-        if (activeRequest) {
-          setPendingRequestId(activeRequest.id);
-          if (activeRequest.status === 'PENDING') {
-            setCurrentStatus(STATUS.PENDING);
-          } else if (activeRequest.status === 'APPROVED') {
-            setCurrentStatus(STATUS.APPROVED);
-          } else if (activeRequest.status === 'IN_PROGRESS') {
-            const startTime = new Date(activeRequest.start_time);
-            const now = new Date();
-            const elapsedSeconds = Math.floor((now - startTime) / 1000);
-            const initialDurationSeconds = activeRequest.duration_minutes * 60;
-            const remainingTime = Math.max(0, initialDurationSeconds - elapsedSeconds);
-            setTimeLeft(remainingTime);
-            setCurrentStatus(STATUS.ON_BREAK);
-          }
-        } else {
-          setCurrentStatus(STATUS.WORKING);
-          setPendingRequestId(null);
-        }
-      } catch (error) {
-        console.error('Erro ao sincronizar estado da pausa:', error);
-      }
-    };
-    
-    fetchPauseTypes();
-    syncState();
-
-    const intervalId = setInterval(syncState, 5000); // Polling a cada 5s
-
-    return () => clearInterval(intervalId);
-  }, [user]);
-
-  // --- EFEITO PARA O CRONÔMETRO ---
-  useEffect(() => {
-    if (currentStatus !== STATUS.ON_BREAK) {
-      return;
-    }
-    
-    // Se o tempo acabar, finaliza a pausa
-    if (timeLeft <= 0) {
-      handleEndPause();
-      return;
-    }
-
-    const timerId = setInterval(() => {
-      setTimeLeft(prevTime => prevTime - 1);
-    }, 1000);
-
-    return () => clearInterval(timerId);
-  }, [currentStatus, timeLeft]);
-
-  const handleRequestPause = async () => {
-  if (!selectedPauseType) {
-    alert('Por favor, selecione um tipo de pausa.');
-    return;
-  }
-  setCurrentStatus(STATUS.PENDING);
-  try {
-    const response = await fetch('http://localhost:5000/api/pauses/request', {
+  const handleRequestPause = () => {
+    if (!selectedPauseType) return alert('Selecione um tipo de pausa.');
+    // Chama a função 'onAction' do Dashboard, passando o endpoint e as opções do fetch
+    onAction('request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: user.id, pauseTypeId: selectedPauseType }),
     });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message);
-    }
-    setPendingRequestId(data.request.id);
-  } catch (error) {
-    alert(`Erro ao solicitar pausa: ${error.message}`);
-    setCurrentStatus(STATUS.WORKING);
-  }
   };
 
-  useEffect(() => {
-    // Se não estivermos em pausa, não faz nada
-    if (currentStatus !== STATUS.ON_BREAK || timeLeft <= 0) {
-      return;
-    }
-    const timerId = setInterval(() => {
-      setTimeLeft(prevTime => prevTime - 1);
-    }, 1000);
-
-    // Se o tempo acabar, chama a função para finalizar a pausa
-    if (timeLeft === 0) {
-      clearInterval(timerId);
-      handleEndPause();
-    }
-
-    // Função de limpeza: para o cronômetro se o status mudar ou o componente desmontar
-    return () => clearInterval(timerId);
-  }, [currentStatus, timeLeft]); // Roda sempre que o status ou o tempo mudar
-
-  const handleCancelRequest = async () => {
-    if (!pendingRequestId) return;
-    try {
-      const response = await fetch(`http://localhost:5000/api/pauses/cancel/${pendingRequestId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message);
-      }
-      setCurrentStatus(STATUS.WORKING);
-      setPendingRequestId(null);
-    } catch (error) {
-      alert(`Erro ao cancelar: ${error.message}`);
-    }
+  const handleCancelRequest = () => {
+    if (!activePause?.id) return;
+    onAction(`cancel/${activePause.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
   };
 
-   // NOVA FUNÇÃO para iniciar a pausa
-  const handleStartPause = async () => {
-    if (!pendingRequestId) return;
-    try {
-      const response = await fetch(`http://localhost:5000/api/pauses/start/${pendingRequestId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-
-      console.log('Pausa iniciada:', data);
-      // Define o tempo inicial do cronômetro (em segundos)
-      setTimeLeft(data.duration_minutes * 60);
-      setCurrentStatus(STATUS.ON_BREAK);
-    } catch (error) {
-      alert(`Erro ao iniciar pausa: ${error.message}`);
-    }
+  const handleStartPause = () => {
+    if (!activePause?.id) return;
+    onAction(`start/${activePause.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
   };
   
-  // NOVA FUNÇÃO para finalizar a pausa
-  const handleEndPause = async () => {
-    if (!pendingRequestId) return;
-    try {
-      const response = await fetch(`http://localhost:5000/api/pauses/end/${pendingRequestId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      
-      console.log('Pausa finalizada:', data);
-      // Reseta todos os estados para o inicial
-      setCurrentStatus(STATUS.WORKING);
-      setPendingRequestId(null);
-      setTimeLeft(0);
-    } catch (error) {
-      alert(`Erro ao finalizar pausa: ${error.message}`);
-    }
-  };
+  // Determina o texto do status a ser exibido com base na prop 'activePause'
+  const currentStatus = activePause ? {
+    'PENDING': STATUS.PENDING,
+    'APPROVED': STATUS.APPROVED,
+    'IN_PROGRESS': STATUS.ON_BREAK,
+    'QUEUED': STATUS.QUEUED,
+  }[activePause.status] || STATUS.WORKING : STATUS.WORKING;
 
-  // Função para formatar os segundos em MM:SS
-  const formatTime = (totalSeconds) => {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  };
-
+  // Função que decide qual conjunto de botões/textos renderizar
   const renderContent = () => {
     switch (currentStatus) {
       case STATUS.PENDING:
-        return (
-          <>
-            <p>Status: {STATUS.PENDING}</p>
-            <button onClick={handleCancelRequest} className="cancel-button">Cancelar Solicitação</button>
-          </>
-        );
+        return <button onClick={handleCancelRequest} className="cancel-button">Cancelar Solicitação</button>;
+      case STATUS.QUEUED:
+        return <p className="status-queued">Você está na fila de espera.</p>;
       case STATUS.APPROVED:
-        return (
-          <>
-            <p className="status-approved">{STATUS.APPROVED}</p>
-            {/* O botão agora chama a nova função handleStartPause */}
-            <button onClick={handleStartPause} className="start-button">Iniciar Pausa</button>
-          </>
-        );
+        return <button onClick={handleStartPause} className="start-button">Iniciar Pausa</button>;
       case STATUS.ON_BREAK:
+        // Quando está em pausa, o timer está na tela principal, então aqui só mostramos um texto.
+        return <p className="on-break-text">Pausa em andamento...</p>;
+      default: // WORKING
         return (
           <>
-            <p>Status: {STATUS.ON_BREAK}</p>
-            {/* Exibe o tempo formatado */}
-            <p className="timer">{formatTime(timeLeft)}</p>
-            {/* O botão agora chama a nova função handleEndPause */}
-            <button onClick={handleEndPause} className="end-button">Finalizar Pausa</button>
-          </>
-        );
-      case STATUS.WORKING:
-      default:
-        return (
-          <>
-            <p>Status: {STATUS.WORKING}</p>
-            <select
-              value={selectedPauseType}
-              onChange={(e) => setSelectedPauseType(e.target.value)}
-              className="pause-select"
-            >
-              <option value="" disabled>Selecione um tipo...</option>
-              {pauseTypes.map((type) => (
+            <select value={selectedPauseType} onChange={(e) => setSelectedPauseType(e.target.value)} className="pause-select">
+              {pauseTypes.map(type => (
                 <option key={type.id} value={type.id}>
-                  {type.name} ({type.duration_minutes} min)
+                  {type.name} ({type.duration_minutes > 0 ? `${type.duration_minutes} min` : 'Progressivo'})
                 </option>
               ))}
             </select>
-            <button onClick={handleRequestPause} className="request-button">
-              Solicitar Pausa
-            </button>
+            <button onClick={handleRequestPause} className="request-button">Solicitar Pausa</button>
           </>
         );
     }
@@ -255,9 +106,9 @@ const PauseControl = ({ user }) => {
   return (
     <div className="pause-control-container">
       <h3>Pausas</h3>
+      <p>Status: {currentStatus}</p>
       {renderContent()}
     </div>
   );
 };
-
 export default PauseControl;

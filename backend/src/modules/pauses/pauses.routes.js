@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pausesController = require('./pauses.controller');
+const { protect } = require('../../middleware/auth.middleware');
 
 // Rota para buscar a lista de tipos de pausa
 router.get('/types', pausesController.getPauseTypes);
@@ -37,5 +38,27 @@ router.get('/monitor', pausesController.getPauseMonitor);
 
 // Rota para o supervisor forçar uma pausa
 router.post('/force', pausesController.forcePause);
+
+// Rota para criar um novo tipo de pausa
+router.post('/types', pausesController.createPauseType);
+
+// Rota para atualizar um tipo de pausa
+// Usamos PUT para atualizações
+router.put('/types/:typeId', pausesController.updatePauseType);
+
+// Rota para deletar um tipo de pausa
+router.delete('/types/:typeId', pausesController.deletePauseType);
+
+// Rotas públicas (qualquer usuário logado pode acessar)
+router.get('/types', pausesController.getPauseTypes);
+
+// Rotas de Administração (SÓ ADMIN PODE ACESSAR)
+// O middleware 'protect('ADMIN')' será executado antes do controller.
+router.post('/types', protect('ADMIN'), pausesController.createPauseType);
+router.put('/types/:typeId', protect('ADMIN'), pausesController.updatePauseType);
+router.delete('/types/:typeId', protect('ADMIN'), pausesController.deletePauseType);
+
+// Rota para o supervisor forçar a finalização de uma pausa
+router.post('/force-end/:requestId', pausesController.forceEndPause);
 
 module.exports = router;

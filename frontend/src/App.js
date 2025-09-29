@@ -1,62 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // <-- CORREÇÃO APLICADA AQUI
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import PauseTypesAdmin from './components/PauseTypesAdmin';
 
-// Importando os componentes das nossas "páginas"
+// Importando nossas novas funções de autenticação
+import { getUserFromToken, removeToken } from './auth';
+
 import LoginPage from './LoginPage';
 import Dashboard from './Dashboard';
-
-// Importando o CSS global
+import UsersAdmin from './components/UsersAdmin';
 import './App.css';
 
 function App() {
-  // Estado para saber se o usuário está autenticado. Inicia como falso.
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
-  // Estado para guardar as informações do usuário que fez login. Inicia como nulo.
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(getUserFromToken());
 
-  /**
-   * Esta função é passada como uma "prop" para o componente LoginPage.
-   * Quando o login é bem-sucedido lá, a LoginPage chama esta função
-   * para atualizar o estado aqui no componente principal (App).
-   */
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
+  const isAuthenticated = !!user;
+
+  const handleLoginSuccess = () => {
+    setUser(getUserFromToken());
+  };
+
+  const handleLogout = () => {
+    removeToken();
+    setUser(null);
   };
 
   return (
     <Router>
       <Routes>
-        {/* ROTA PARA A PÁGINA DE LOGIN */}
         <Route 
           path="/login" 
           element={
-            // Se o usuário JÁ estiver autenticado, não mostre a tela de login.
-            // Em vez disso, redirecione-o para a página principal ("/").
             isAuthenticated 
               ? <Navigate to="/" /> 
-              // Se não estiver autenticado, mostre a LoginPage.
               : <LoginPage onLoginSuccess={handleLoginSuccess} />
           } 
         />
-        
-        {/* ROTA PARA A PÁGINA PRINCIPAL / DASHBOARD */}
         <Route 
           path="/" 
           element={
-            // Se o usuário estiver autenticado, mostre o Dashboard.
             isAuthenticated 
-              ? <Dashboard user={user} />
-              // Se não estiver autenticado, proteja esta rota e
-              // redirecione o usuário para a página de login.
+              ? <Dashboard user={user} handleLogout={handleLogout} />
               : <Navigate to="/login" />
           } 
         />
-
-        {/* ROTA "CATCH-ALL" (Pega-Tudo) */}
-        {/* Se o usuário digitar qualquer URL que não seja / ou /login,
-            ele será redirecionado para a página principal. */}
+        <Route
+          path="/admin/pause-types"
+          element={
+            // Proteção: Só renderiza se estiver autenticado E a role for 'ADMIN'
+            isAuthenticated && user.role === 'ADMIN'
+              ? <PauseTypesAdmin />
+              : <Navigate to="/" /> // Se não, redireciona para a página principal
+          }
+        />
+        {/* NOVA ROTA DE ADMIN */}
+        <Route
+          path="/admin/users"
+          element={isAuthenticated && user.role === 'ADMIN' ? <UsersAdmin /> : <Navigate to="/" />}
+        />
         <Route path="*" element={<Navigate to="/" />} /> 
       </Routes>
     </Router>

@@ -1,40 +1,37 @@
 import React, { useState } from 'react';
+import { saveToken } from './auth'; // Importa a nova função para salvar o token
 
-// Criamos um componente funcional chamado LoginPage
 const LoginPage = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Modifique esta função
-  const handleSubmit = async (event) => { // adicione 'async'
+  const handleSubmit = async (event) => {
     event.preventDefault(); 
     
     console.log('Enviando para o backend:', { username, password });
 
     try {
-      // Usamos o 'fetch' para fazer a requisição para o nosso backend
       const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST', // Estamos enviando dados, então usamos POST
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json', // Avisamos que estamos enviando JSON
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }), // Convertemos nosso objeto JS para uma string JSON
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
 
-        if (response.ok) { // Verifica se a resposta foi um sucesso (status 200-299)
-          console.log('Resposta do backend:', data);
-          // Chama a função do App.js, passando os dados do usuário
-          onLoginSuccess(data.user); 
-        } else {
-          // Se a resposta não foi OK (ex: 401 Credenciais inválidas), mostra o erro
-          alert(data.message);
-        }
+      if (response.ok) {
+        console.log('Resposta do backend:', data);
 
-      // Mostramos a resposta do servidor no console do navegador
-      console.log('Resposta do backend:', data);
-      alert(data.message); // Mostra um alerta com a mensagem do backend
+        // AÇÃO PRINCIPAL: Salva o token recebido no localStorage do navegador
+        saveToken(data.token);
+        
+        // Avisa o componente App.js que o login foi um sucesso, passando os dados do usuário
+        onLoginSuccess(data.user);
+      } else {
+        alert(data.message);
+      }
 
     } catch (error) {
       console.error('Erro ao tentar fazer login:', error);
@@ -51,7 +48,7 @@ const LoginPage = ({ onLoginSuccess }) => {
           <input 
             type="text" 
             value={username}
-            onChange={(e) => setUsername(e.target.value)} // Atualiza o estado a cada letra digitada
+            onChange={(e) => setUsername(e.target.value)}
           />
         </div>
         <div>
@@ -59,7 +56,7 @@ const LoginPage = ({ onLoginSuccess }) => {
           <input 
             type="password" 
             value={password}
-            onChange={(e) => setPassword(e.target.value)} // Atualiza o estado a cada letra digitada
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
         <button type="submit">Entrar</button>
