@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { getToken } from '../auth';
-import './Admin.css';
+import './Admin.css'; // Reutilizamos o mesmo CSS
 
-// -- COMPONENTE MODAL PARA EDIÇÃO/CRIAÇÃO --
+// -- SUB-COMPONENTE MODAL PARA EDIÇÃO/CRIAÇÃO --
+// Este componente é a janela pop-up que contém o formulário.
 const UserModal = ({ user, roles, onSave, onCancel }) => {
   const [userData, setUserData] = useState(user);
   const isNewUser = !user.id;
 
+  // Garante que o formulário seja atualizado se o usuário a ser editado mudar
   useEffect(() => {
     setUserData(user);
   }, [user]);
@@ -24,7 +26,7 @@ const UserModal = ({ user, roles, onSave, onCancel }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h4>{isNewUser ? 'Criar Novo Usuário' : 'Editar Usuário'}</h4>
+        <h4>{isNewUser ? 'Criar Novo Usuário' : `Editar Usuário: ${user.full_name}`}</h4>
         <form onSubmit={handleSubmit}>
           <input type="text" name="full_name" value={userData.full_name || ''} onChange={handleChange} placeholder="Nome Completo" required />
           <input type="text" name="username" value={userData.username || ''} onChange={handleChange} placeholder="Nome de Usuário (login)" required />
@@ -48,50 +50,57 @@ const UserModal = ({ user, roles, onSave, onCancel }) => {
 };
 
 
-// -- COMPONENTE PRINCIPAL DA PÁGINA --
+// -- COMPONENTE PRINCIPAL DA PÁGINA DE ADMINISTRAÇÃO DE USUÁRIOS --
 const UsersAdmin = () => {
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Estados para controlar o Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
+  // Função para buscar todos os dados da API (usuários e funções)
   const fetchUsersAndRoles = async () => {
     setIsLoading(true);
     const token = getToken();
     try {
+      const headers = { 'Authorization': `Bearer ${token}` };
       const [usersRes, rolesRes] = await Promise.all([
-        fetch('http://localhost:5000/api/users', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/roles', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch('http://localhost:5000/api/users', { headers }),
+        fetch('http://localhost:5000/api/roles', { headers })
       ]);
       const usersData = await usersRes.json();
       const rolesData = await rolesRes.json();
       setUsers(Array.isArray(usersData) ? usersData : []);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
     } catch (err) {
-      console.error("Erro ao buscar dados", err);
+      console.error("Erro ao buscar dados de administração:", err);
+      alert("Falha ao carregar dados. Verifique o console.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Busca os dados quando o componente carrega pela primeira vez
   useEffect(() => {
-    // CORREÇÃO APLICADA AQUI
     fetchUsersAndRoles();
   }, []);
 
+  // Abre o modal para criar um novo usuário
   const handleNewUser = () => {
     setEditingUser({ username: '', full_name: '', password: '', role_id: '' });
     setIsModalOpen(true);
   };
 
+  // Abre o modal para editar um usuário existente
   const handleEditUser = (user) => {
     const role = roles.find(r => r.name === user.role);
     setEditingUser({ ...user, role_id: role ? role.id : '' });
     setIsModalOpen(true);
   };
   
+  // Função para ativar/desativar um usuário
   const handleToggleActive = async (user) => {
     const action = user.is_active ? 'desativar' : 'reativar';
     if (window.confirm(`Tem certeza que deseja ${action} o usuário ${user.full_name}?`)) {
@@ -106,13 +115,14 @@ const UsersAdmin = () => {
           body: JSON.stringify({ is_active: !user.is_active })
         });
         if (!response.ok) throw new Error(`Falha ao ${action} o usuário.`);
-        fetchUsersAndRoles();
+        fetchUsersAndRoles(); // Recarrega a lista para refletir a mudança
       } catch (err) {
         alert(err.message);
       }
     }
   };
 
+  // Função chamada pelo Modal para salvar (seja criando ou atualizando)
   const handleSaveUser = async (userData) => {
     const token = getToken();
     const isNewUser = !userData.id;
@@ -133,7 +143,7 @@ const UsersAdmin = () => {
       
       setIsModalOpen(false);
       setEditingUser(null);
-      fetchUsersAndRoles();
+      fetchUsersAndRoles(); // Recarrega a lista
       alert(`Usuário ${isNewUser ? 'criado' : 'atualizado'} com sucesso!`);
     } catch (err) {
       alert(err.message);
@@ -144,6 +154,7 @@ const UsersAdmin = () => {
 
   return (
     <div className="admin-page">
+      {/* O Modal só é renderizado na tela se isModalOpen for true */}
       {isModalOpen && (
         <UserModal 
           user={editingUser} 

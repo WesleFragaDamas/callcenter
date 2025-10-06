@@ -4,43 +4,12 @@ import './SupervisorDashboard.css';
 /**
  * SupervisorDashboard Component
  * Este componente é o painel de AÇÕES do supervisor na sidebar.
- * Ele é responsável por mostrar as solicitações PENDENTES e em FILA.
- * 
- * Props:
- * - user: O objeto do supervisor logado.
- * - onAction: A função "chefe" do Dashboard.js para executar chamadas de API.
+ * Ele recebe a lista de requisições ('requests') e a função de ação ('onAction')
+ * do seu componente pai, o Dashboard.js. Ele é um componente "burro".
  */
-const SupervisorDashboard = ({ user, onAction }) => {
-  // O estado 'requests' agora será preenchido via polling do Dashboard.js,
-  // mas precisamos de um estado local para exibi-lo.
-  const [requests, setRequests] = useState([]);
-  
-  // O useEffect busca os dados das solicitações (pendentes e em fila)
-  useEffect(() => {
-    const fetchRequests = () => {
-      // Usamos a função onAction para fazer uma chamada GET
-      // O Dashboard.js tratará a resposta e atualizará o estado
-      // NOTA: Para chamadas GET, não precisamos passar o segundo argumento 'options'.
-      // Precisamos de um novo endpoint para buscar dados para este componente.
-      // Vamos criar `GET /api/pauses/requests`
-      
-      // *** LÓGICA DE POLLING FOI MOVIDA PARA O DASHBOARD.JS ***
-      // Para este componente, vamos buscar os dados diretamente por simplicidade por enquanto
-      // e refatorar depois para receber do Dashboard.js
-      fetch('http://localhost:5000/api/pauses/pending') // Esta rota já busca PENDING e QUEUED
-        .then(res => res.json())
-        .then(data => setRequests(data))
-        .catch(error => console.error("Erro ao buscar solicitações:", error));
-    };
+const SupervisorDashboard = ({ user, requests, onAction }) => {
 
-    fetchRequests();
-    const intervalId = setInterval(fetchRequests, 3000); // Continua com seu polling local por enquanto
-    
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // --- Funções que preparam e chamam 'onAction' ---
-
+  // Função para o clique do botão "Aprovar"
   const handleApprove = (requestId) => {
     onAction(`approve/${requestId}`, {
       method: 'POST',
@@ -49,6 +18,7 @@ const SupervisorDashboard = ({ user, onAction }) => {
     });
   };
 
+  // Função para o clique do botão "Rejeitar"
   const handleReject = (requestId) => {
     onAction(`reject/${requestId}`, {
       method: 'POST',
@@ -57,7 +27,7 @@ const SupervisorDashboard = ({ user, onAction }) => {
     });
   };
 
-  // Separa a lista de requisições em duas para exibição
+  // Separa a lista de requisições (recebida via props) em duas para exibição
   const pendingRequests = requests.filter(r => r.status === 'PENDING');
   const queuedRequests = requests.filter(r => r.status === 'QUEUED');
 
@@ -98,4 +68,5 @@ const SupervisorDashboard = ({ user, onAction }) => {
     </div>
   );
 };
+
 export default SupervisorDashboard;

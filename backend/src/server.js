@@ -5,6 +5,7 @@ const path = require('path'); // Importe o módulo 'path' do Node.js
 
 
 // Importando TODOS os nossos módulos de rotas
+const setupRoutes = require('./modules/setup/setup.routes');
 const authRoutes = require('./modules/auth/auth.routes'); 
 const pauseRoutes = require('./modules/pauses/pauses.routes');
 const userRoutes = require('./modules/users/users.routes');
@@ -23,6 +24,7 @@ app.get('/', (req, res) => {
 });
 
 // Registrando TODOS os nossos módulos de rotas
+app.use('/api/setup', setupRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/pauses', pauseRoutes);
 app.use('/api/users', userRoutes);

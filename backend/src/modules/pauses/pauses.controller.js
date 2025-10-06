@@ -2,9 +2,11 @@ const db = require('../../config/database');
 
 const PAUSE_LIMIT_PERCENTAGE = 0.15; // 15%
 
+// Função auxiliar para verificar a fila e promover o próximo, se houver vaga
 const checkQueueAndPromote = async (db) => {
   try {
-    const operatorsResult = await db.query("SELECT COUNT(id) AS total_operators FROM users WHERE role_id = (SELECT id FROM roles WHERE name = 'OPERATOR')");
+    // CORREÇÃO APLICADA AQUI TAMBÉM POR CONSISTÊNCIA
+    const operatorsResult = await db.query("SELECT COUNT(id) AS total_operators FROM users WHERE role_id = (SELECT id FROM roles WHERE name = 'OPERATOR') AND is_active = true");
     const totalOperators = parseInt(operatorsResult.rows[0].total_operators, 10);
     if (totalOperators === 0) return;
     
@@ -30,9 +32,9 @@ const checkQueueAndPromote = async (db) => {
     console.error("Erro ao verificar a fila de espera:", error);
   }
 };
+
 /**
- * Busca todos os tipos de pausa disponíveis no banco de dados.
- * Usado pelo frontend para popular menus dropdown.
+ * Busca todos os tipos de pausa disponíveis.
  */
 const getPauseTypes = async (req, res) => {
   try {
@@ -46,8 +48,7 @@ const getPauseTypes = async (req, res) => {
 };
 
 /**
- * Busca as solicitações de pausa PENDENTES.
- * Usado pela sidebar de notificações do supervisor.
+ * Busca solicitações PENDENTES e em FILA para o supervisor.
  */
 const getPendingRequests = async (req, res) => {
   try {
@@ -128,27 +129,22 @@ const getPauseMonitor = async (req, res) => {
   try {
     const pausesQuery = `
       SELECT 
-        pr.id AS request_id,
-        pr.user_id,
-        u.full_name AS user_full_name,
-        pt.name AS pause_type_name,
-        pt.duration_minutes,
-        pt.timer_type,
-        pr.status,
-        pr.start_time
+        pr.id AS request_id, pr.user_id, u.full_name AS user_full_name,
+        pt.name AS pause_type_name, pt.duration_minutes, pt.timer_type,
+        pr.status, pr.start_time
       FROM pause_requests pr
       JOIN users u ON pr.user_id = u.id
       JOIN pause_types pt ON pr.pause_type_id = pt.id
       WHERE pr.status IN ('APPROVED', 'IN_PROGRESS')
-      ORDER BY 
-        CASE pr.status WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END, 
-        pr.start_time ASC, pr.requested_at ASC;
+      ORDER BY CASE pr.status WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END, 
+      pr.start_time ASC, pr.requested_at ASC;
     `;
+    // CORREÇÃO APLICADA AQUI: Adicionado "AND u.is_active = true"
     const operatorsQuery = `
       SELECT COUNT(u.id) AS total_operators
       FROM users u
       JOIN roles r ON u.role_id = r.id
-      WHERE r.name = 'OPERATOR';
+      WHERE r.name = 'OPERATOR' AND u.is_active = true;
     `;
     const [pausesResult, operatorsResult] = await Promise.all([
       db.query(pausesQuery),
@@ -267,14 +263,20 @@ const approveRequest = async (req, res) => {
   const { requestId } = req.params;
   const { userId: supervisorId } = req.body;
   try {
-    const operatorsResult = await db.query("SELECT COUNT(id) AS total_operators FROM users WHERE role_id = (SELECT id FROM roles WHERE name = 'OPERATOR')");
+    // CORREÇÃO APLICADA AQUI: Adicionado "AND is_active = true"
+    const operatorsResult = await db.query("SELECT COUNT(id) AS total_operators FROM users WHERE role_id = (SELECT id FROM roles WHERE name = 'OPERATOR') AND is_active = true");
     const totalOperators = parseInt(operatorsResult.rows[0].total_operators, 10);
+
     const pauseLimit = totalOperators > 0 ? Math.max(1, Math.floor(totalOperators * PAUSE_LIMIT_PERCENTAGE)) : 0;
+    
     const onPauseResult = await db.query("SELECT COUNT(id) AS operators_on_pause FROM pause_requests WHERE status = 'IN_PROGRESS'");
     const operatorsOnPause = parseInt(onPauseResult.rows[0].operators_on_pause, 10);
+    
     let newStatus = (operatorsOnPause < pauseLimit) ? 'APPROVED' : 'QUEUED';
+    
     const updateQuery = `UPDATE pause_requests SET status = $1, handled_by = $2, handled_at = NOW() WHERE id = $3 AND status = 'PENDING' RETURNING *;`;
     const { rows } = await db.query(updateQuery, [newStatus, supervisorId, requestId]);
+    
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Solicitação não encontrada ou já foi tratada.' });
     }
