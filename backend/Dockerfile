@@ -4,19 +4,19 @@ FROM node:18-alpine
 # Define o diretório de trabalho dentro do container
 WORKDIR /app
 
-# Copia o package.json e package-lock.json para o container
+# Copia o package.json e package-lock.json primeiro
 COPY package*.json ./
 
-# Instala as dependências de produção
-RUN npm install --omit=dev
+# Instala as dependências de produção. 'npm ci' é mais rápido e confiável para builds.
+RUN npm ci --omit=dev
 
-# Copia todo o resto do código do projeto para o container
+# Copia todo o resto do código do projeto
 COPY . .
 
-# Executa o script de build para criar a pasta 'dist'
+# Executa o script de build
 RUN npm run build
 
-# Expõe a porta 5000 para o mundo exterior
+# Expõe a porta 5000
 EXPOSE 5000
 
 # O comando que será executado quando o container iniciar
