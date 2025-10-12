@@ -1,15 +1,14 @@
-const express = require('express');
-const cors = require('cors');
-const db = require('./config/database');
-const path = require('path'); // Importe o módulo 'path' do Node.js
+import express from 'express'; // Podemos usar 'import' se o Babel estiver configurado
+import cors from 'cors';
+import path from 'path'; // Módulo nativo do Node.js
+import db from './config/database';
 
-
-// Importando TODOS os nossos módulos de rotas
-const setupRoutes = require('./modules/setup/setup.routes');
-const authRoutes = require('./modules/auth/auth.routes'); 
-const pauseRoutes = require('./modules/pauses/pauses.routes');
-const userRoutes = require('./modules/users/users.routes');
-const roleRoutes = require('./modules/roles/roles.routes'); // <-- LINHA FALTANTE
+// Importando todos os nossos módulos de rotas
+import setupRoutes from './modules/setup/setup.routes';
+import authRoutes from './modules/auth/auth.routes';
+import pauseRoutes from './modules/pauses/pauses.routes';
+import userRoutes from './modules/users/users.routes';
+import roleRoutes from './modules/roles/roles.routes';
 
 const app = express();
 const PORT = 5000;
@@ -18,44 +17,42 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-// === Rotas ===
-app.get('/', (req, res) => {
-  res.send('<h1>API do Call Center está funcionando!</h1>');
-});
+// --- SERVIR O FRONTEND EM PRODUÇÃO ---
+// Pega o caminho absoluto para a pasta 'backend'
+const __dirname = path.resolve(); 
+// Diz ao Express para servir os arquivos estáticos da pasta 'build' do frontend
+// que estará ao lado da pasta 'dist' do backend.
+app.use(express.static(path.join(__dirname, 'build')));
 
-// Registrando TODOS os nossos módulos de rotas
+
+// === Rotas da API ===
+// Todas as nossas rotas de API devem vir DEPOIS de servir os arquivos estáticos
 app.use('/api/setup', setupRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/pauses', pauseRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/roles', roleRoutes); // <-- LINHA FALTANTE
+app.use('/api/roles', roleRoutes);
+
+
+// --- ROTA "CATCH-ALL" PARA O REACT ROUTER ---
+// Esta rota deve ser a ÚLTIMA. Qualquer requisição GET que não foi
+// pega por uma rota da API acima, será redirecionada para o index.html do React.
+// Isso permite que o roteamento do próprio React funcione.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
 
 
 // Função para testar a conexão com o banco de dados
-async function testDbConnection() {
+const testDbConnection = async () => {
   try {
-    const result = await db.query('SELECT NOW()');
+    await db.query('SELECT NOW()');
     console.log('Conexão com o banco de dados PostgreSQL bem-sucedida!');
   } catch (err) {
     console.error('Erro ao conectar com o banco de dados:', err);
     process.exit(1);
   }
-}
-
-// === SERVIR ARQUIVOS ESTÁTICOS DO FRONTEND (PRODUÇÃO) ===
-// Diz ao Express para usar a pasta 'build' para servir arquivos estáticos
-app.use(express.static(path.join(__dirname, '..', 'build')));
-
-// === Rotas da API ===
-app.use('/api/auth', authRoutes);
-// ... (outras rotas da API)
-
-// === ROTA "CATCH-ALL" PARA O FRONTEND ===
-// Qualquer requisição GET que não corresponda a uma rota da API acima
-// será redirecionada para o arquivo principal do React (index.html).
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'build', 'index.html'));
-});
+};
 
 // Função principal para iniciar o servidor
 const startServer = async () => {
